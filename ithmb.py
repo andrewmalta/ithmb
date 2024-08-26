@@ -30,6 +30,20 @@ def yuv_to_rgb(y, u, v):
     
     return r, g, b
 
+def convertCLToRGBColor(chromiance, luminance):
+    y = luminance
+    u = (chromiance >> 4 & 0xF) * 16
+    v = (chromiance & 0xF) * 16
+
+    return yuv_to_rgb(normalize_value(y), normalize_value(u), normalize_value(v))
+
+def convert_two_byte_rgb_to_rgb_color(high_byte, low_byte):
+    r = (high_byte >> 3) & 0x1F
+    g = ((high_byte >> 3) & 0x38) | ((low_byte >> 5) & 0x7)
+    b = low_byte & 0x1F
+
+    return (r * 8, g * 8, b * 8)
+
 def process_chunk_yuv_interlaced_shared_chromiance(chunk_data, width, height):
     rgb_data = rgb_data = np.zeros((height, width, 3), dtype=np.uint8)
 
@@ -65,15 +79,6 @@ def process_chunk_yuv_interlaced_shared_chromiance(chunk_data, width, height):
 
     return rgb_data
 
-
-def convertCLToRGBColor(chromiance, luminance):
-    y = luminance
-    u = (chromiance >> 4 & 0xF) * 16
-    v = (chromiance & 0xF) * 16
-
-    return yuv_to_rgb(normalize_value(y), normalize_value(u), normalize_value(v))
-
-
 def process_chunk_yuv_plain(chunk_data, width, height):
     rgb_data = rgb_data = np.zeros((height, width, 3), dtype=np.uint8)
     for y in range(height):
@@ -85,27 +90,6 @@ def process_chunk_yuv_plain(chunk_data, width, height):
             rgb_data[y, x] = r, g, b
 
     return rgb_data
-
-'''RGBColor rgb;
-    unsigned char red, green, blue;
-    
-    red =   (highByte >> 3) & 31/*0b00011111*/;
-    green = ((highByte << 3) & 56/*0b00111000*/) | ((lowByte >> 5) & 7/*0b00000111*/);
-    blue =  lowByte & 31/*0b00011111*/;
-    
-    rgb.red = red * 2048;
-    rgb.green = green * 1024;
-    rgb.blue = blue * 2048;
-    
-    return rgb;'''
-
-def convert_two_byte_rgb_to_rgb_color(high_byte, low_byte):
-    r = (high_byte >> 3) & 0x1F
-    g = ((high_byte >> 3) & 0x38) | ((low_byte >> 5) & 0x7)
-    b = low_byte & 0x1F
-
-    return (r * 8, g * 8, b * 8)
-
 
 def process_file_16_bit_rgb(chunk_data, width, height):
     rgb_data = rgb_data = np.zeros((height, width, 3), dtype=np.uint8)
@@ -127,7 +111,7 @@ def process_file(input_file, output_dir):
         "1015": (130, 88, process_file_16_bit_rgb),
         "1019": (720, 480, process_chunk_yuv_interlaced_shared_chromiance),
         "1024": (320, 240, process_file_16_bit_rgb),
-        "1036": (50, 41, process_chunk_yuv_plain)
+        "1036": (50, 41, process_file_16_bit_rgb)
     }
 
     if not input_file_prefix in dimension_mapping:
@@ -156,7 +140,6 @@ def process_file(input_file, output_dir):
             
             print(f"Saved {output_file}")
             chunk_number += 1
-
 
 if __name__ == "__main__":
     output_dir = 'output_images'
